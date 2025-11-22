@@ -85,10 +85,21 @@ def url_show(id):
             )
             url = cur.fetchone()
 
-    if url is None:
-        abort(404)
+            if url is None:
+                abort(404)
 
-    return render_template("urls/show.html", url=url)
+            cur.execute(
+                """
+                SELECT id, status_code, h1, title, description, created_at
+                FROM url_checks
+                WHERE url_id = %s
+                ORDER BY id DESC
+                """,
+                (id,),
+            )
+            checks = cur.fetchall()
+
+    return render_template("urls/show.html", url=url, checks=checks)
 
 
 @app.get("/urls")
@@ -97,11 +108,36 @@ def urls_index():
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, name, created_at
+                SELECT
+                    urls.id,
+                    urls.name,
+                    urls.created_at,
+                    MAX(url_checks.created_at) AS last_check_at
                 FROM urls
-                ORDER BY id DESC
+                LEFT JOIN url_checks
+                    ON url_checks.url_id = urls.id
+                GROUP BY urls.id
+                ORDER BY urls.id DESC
                 """
             )
             urls = cur.fetchall()
 
     return render_template("urls/index.html", urls=urls)
+
+
+@app.post("/urls/<int:id>/checks")
+def url_checks_store(id):
+    created_at = datetime.now()
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO url_checks (url_id, created_at)
+                VALUES (%s, %s)
+                """,
+                (id, created_at),
+            )
+
+    flash("Страница успешно проверена", "success")
+    return redirect(url_for("url_show", id=id))

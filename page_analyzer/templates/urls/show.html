@@ -60,6 +60,44 @@
             </tr>
           </tbody>
         </table>
+        <div class="row justify-content-center mt-5">
+          <div class="col-lg-10">
+            <h2 class="mb-3">Проверки</h2>
+
+            <form method="post" action="{{ url_for('url_checks_store', id=url.id) }}" class="mb-3">
+              <button type="submit" class="btn btn-primary">
+                Запустить проверку
+              </button>
+            </form>
+
+            <table class="table table-bordered table-hover" data-test="checks">
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Код ответа</th>
+                  <th scope="col">h1</th>
+                  <th scope="col">title</th>
+                  <th scope="col">description</th>
+                  <th scope="col">Дата создания</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for check in checks %}
+                <tr>
+                  <td>{{ check.id }}</td>
+                  <td>{{ check.status_code }}</td>
+                  <td>{{ check.h1 }}</td>
+                  <td>{{ check.title }}</td>
+                  <td>{{ check.description }}</td>
+                  <td>{{ check.created_at.date() }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
       </div>
     </div>
   </main>
