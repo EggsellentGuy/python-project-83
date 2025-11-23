@@ -5,6 +5,7 @@ from psycopg.rows import dict_row
 
 import psycopg
 import validators
+import requests
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 
@@ -112,11 +113,16 @@ def urls_index():
                     urls.id,
                     urls.name,
                     urls.created_at,
-                    MAX(url_checks.created_at) AS last_check_at
+                    last_check.created_at AS last_check_at,
+                    last_check.status_code AS last_status_code
                 FROM urls
-                LEFT JOIN url_checks
-                    ON url_checks.url_id = urls.id
-                GROUP BY urls.id
+                LEFT JOIN LATERAL (
+                    SELECT created_at, status_code
+                    FROM url_checks
+                    WHERE url_checks.url_id = urls.id
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) AS last_check ON TRUE
                 ORDER BY urls.id DESC
                 """
             )
@@ -127,16 +133,40 @@ def urls_index():
 
 @app.post("/urls/<int:id>/checks")
 def url_checks_store(id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name FROM urls WHERE id = %s",
+                (id,),
+            )
+            row = cur.fetchone()
+
+    if row is None:
+        abort(404)
+
+    url_name = row["name"]
+
+    try:
+        response = requests.get(url_name, timeout=10)
+        status_code = response.status_code
+    except requests.RequestException:
+        flash("Произошла ошибка при проверке", "danger")
+        return redirect(url_for("url_show", id=id))
+
+    if status_code >= 500:
+        flash("Произошла ошибка при проверке", "danger")
+        return redirect(url_for("url_show", id=id))
+
     created_at = datetime.now()
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO url_checks (url_id, created_at)
-                VALUES (%s, %s)
+                INSERT INTO url_checks (url_id, status_code, created_at)
+                VALUES (%s, %s, %s)
                 """,
-                (id, created_at),
+                (id, status_code, created_at),
             )
 
     flash("Страница успешно проверена", "success")
