@@ -8,7 +8,15 @@ import validators
 import requests
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    abort,
+)
 
 
 load_dotenv()
@@ -184,7 +192,9 @@ def url_checks_store(id):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+                INSERT INTO url_checks (
+                url_id, status_code, h1, title, description, created_at
+                )
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (id, status_code, h1_text, title_text,
