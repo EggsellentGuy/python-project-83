@@ -7,6 +7,7 @@ import psycopg
 import validators
 import requests
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 
 
@@ -157,16 +158,37 @@ def url_checks_store(id):
         flash("Произошла ошибка при проверке", "danger")
         return redirect(url_for("url_show", id=id))
 
+    h1_text = None
+    title_text = None
+    description_text = None
+
+    try:
+        soup = BeautifulSoup(response.text, "html.parser")
+        h1_tag = soup.find("h1")
+        if h1_tag:
+            h1_text = h1_tag.get_text(strip=True)
+
+        title_tag = soup.find("title")
+        if title_tag:
+            title_text = title_tag.get_text(strip=True)
+
+        meta_desc_tag = soup.find("meta", attrs={"name": "description"})
+        if meta_desc_tag and meta_desc_tag.get("content"):
+            description_text = meta_desc_tag["content"].strip()
+    except Exception:
+        pass
+
     created_at = datetime.now()
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO url_checks (url_id, status_code, created_at)
-                VALUES (%s, %s, %s)
+                INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                (id, status_code, created_at),
+                (id, status_code, h1_text, title_text,
+                 description_text, created_at),
             )
 
     flash("Страница успешно проверена", "success")
