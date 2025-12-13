@@ -1,34 +1,29 @@
 import os
 from datetime import datetime
 from urllib.parse import urlparse
-from psycopg.rows import dict_row
 
-import psycopg
-import validators
 import requests
+import validators
 from dotenv import load_dotenv
-from bs4 import BeautifulSoup
 from flask import (
     Flask,
+    abort,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
     url_for,
-    flash,
-    abort,
 )
+
+from page_analyzer.database import get_db_connection
+from page_analyzer.parser import parse_seo
+from page_analyzer.url_normalizer import normalize_url
 
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-
-def get_db_connection():
-    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
 @app.get("/")
@@ -39,7 +34,6 @@ def index():
 @app.post("/urls")
 def urls_store():
     url = request.form.get("url", "").strip()
-
     errors = []
 
     if not url:
@@ -55,8 +49,7 @@ def urls_store():
         return render_template("index.html"), 422
 
     parsed = urlparse(url)
-    normalized_url = f"{parsed.scheme}://{parsed.netloc}"
-
+    normalized_url = normalize_url(f"{parsed.scheme}://{parsed.netloc}")
     created_at = datetime.now()
 
     with get_db_connection() as conn:
@@ -166,25 +159,12 @@ def url_checks_store(id):
         flash("Произошла ошибка при проверке", "danger")
         return redirect(url_for("url_show", id=id))
 
-    h1_text = None
-    title_text = None
-    description_text = None
-
     try:
-        soup = BeautifulSoup(response.text, "html.parser")
-        h1_tag = soup.find("h1")
-        if h1_tag:
-            h1_text = h1_tag.get_text(strip=True)
-
-        title_tag = soup.find("title")
-        if title_tag:
-            title_text = title_tag.get_text(strip=True)
-
-        meta_desc_tag = soup.find("meta", attrs={"name": "description"})
-        if meta_desc_tag and meta_desc_tag.get("content"):
-            description_text = meta_desc_tag["content"].strip()
+        h1_text, title_text, description_text = parse_seo(response.text)
     except Exception:
-        pass
+        h1_text = None
+        title_text = None
+        description_text = None
 
     created_at = datetime.now()
 
@@ -193,12 +173,23 @@ def url_checks_store(id):
             cur.execute(
                 """
                 INSERT INTO url_checks (
-                url_id, status_code, h1, title, description, created_at
+                    url_id,
+                    status_code,
+                    h1,
+                    title,
+                    description,
+                    created_at
                 )
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                (id, status_code, h1_text, title_text,
-                 description_text, created_at),
+                (
+                    id,
+                    status_code,
+                    h1_text,
+                    title_text,
+                    description_text,
+                    created_at,
+                ),
             )
 
     flash("Страница успешно проверена", "success")
