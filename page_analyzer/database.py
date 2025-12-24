@@ -89,7 +89,13 @@ def list_checks_for_url(url_id: int):
             return cur.fetchall()
 
 
-def create_check(url_id: int, status_code: int, h1, title, description, created_at):
+def create_check(url_id: int,
+                 status_code: int,
+                 h1,
+                 title,
+                 description,
+                 created_at,
+                 ):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
