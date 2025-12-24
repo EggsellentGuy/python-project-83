@@ -15,7 +15,15 @@ from flask import (
     url_for,
 )
 
-from page_analyzer.database import get_db_connection
+from page_analyzer.database import (
+    create_check,
+    create_url,
+    get_url_by_id,
+    get_url_id_by_name,
+    get_url_name_by_id,
+    list_checks_for_url,
+    list_urls_with_last_check,
+)
 from page_analyzer.parser import parse_seo
 from page_analyzer.url_normalizer import normalize_url
 
@@ -52,101 +60,38 @@ def urls_store():
     normalized_url = normalize_url(f"{parsed.scheme}://{parsed.netloc}")
     created_at = datetime.now()
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id FROM urls WHERE name = %s",
-                (normalized_url,),
-            )
-            existing = cur.fetchone()
-
-            if existing:
-                url_id = existing["id"]
-                flash("Страница уже существует", "info")
-            else:
-                cur.execute(
-                    """
-                    INSERT INTO urls (name, created_at)
-                    VALUES (%s, %s)
-                    RETURNING id
-                    """,
-                    (normalized_url, created_at),
-                )
-                url_id = cur.fetchone()["id"]
-                flash("Страница успешно добавлена", "success")
+    existing_id = get_url_id_by_name(normalized_url)
+    if existing_id is not None:
+        url_id = existing_id
+        flash("Страница уже существует", "info")
+    else:
+        url_id = create_url(normalized_url, created_at)
+        flash("Страница успешно добавлена", "success")
 
     return redirect(url_for("url_show", id=url_id))
 
 
 @app.get("/urls/<int:id>")
 def url_show(id):
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, name, created_at FROM urls WHERE id = %s",
-                (id,),
-            )
-            url = cur.fetchone()
+    url = get_url_by_id(id)
+    if url is None:
+        abort(404)
 
-            if url is None:
-                abort(404)
-
-            cur.execute(
-                """
-                SELECT id, status_code, h1, title, description, created_at
-                FROM url_checks
-                WHERE url_id = %s
-                ORDER BY id DESC
-                """,
-                (id,),
-            )
-            checks = cur.fetchall()
-
+    checks = list_checks_for_url(id)
     return render_template("urls/show.html", url=url, checks=checks)
 
 
 @app.get("/urls")
 def urls_index():
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                    urls.id,
-                    urls.name,
-                    urls.created_at,
-                    last_check.created_at AS last_check_at,
-                    last_check.status_code AS last_status_code
-                FROM urls
-                LEFT JOIN LATERAL (
-                    SELECT created_at, status_code
-                    FROM url_checks
-                    WHERE url_checks.url_id = urls.id
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                ) AS last_check ON TRUE
-                ORDER BY urls.id DESC
-                """
-            )
-            urls = cur.fetchall()
-
+    urls = list_urls_with_last_check()
     return render_template("urls/index.html", urls=urls)
 
 
 @app.post("/urls/<int:id>/checks")
 def url_checks_store(id):
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT name FROM urls WHERE id = %s",
-                (id,),
-            )
-            row = cur.fetchone()
-
-    if row is None:
+    url_name = get_url_name_by_id(id)
+    if url_name is None:
         abort(404)
-
-    url_name = row["name"]
 
     try:
         response = requests.get(url_name, timeout=10)
@@ -167,30 +112,14 @@ def url_checks_store(id):
         description_text = None
 
     created_at = datetime.now()
-
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO url_checks (
-                    url_id,
-                    status_code,
-                    h1,
-                    title,
-                    description,
-                    created_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    id,
-                    status_code,
-                    h1_text,
-                    title_text,
-                    description_text,
-                    created_at,
-                ),
-            )
+    create_check(
+        id,
+        status_code,
+        h1_text,
+        title_text,
+        description_text,
+        created_at,
+    )
 
     flash("Страница успешно проверена", "success")
     return redirect(url_for("url_show", id=id))

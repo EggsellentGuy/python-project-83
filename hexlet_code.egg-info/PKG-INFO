@@ -1,3 +1,18 @@
+Metadata-Version: 2.4
+Name: hexlet-code
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: beautifulsoup4>=4.14.2
+Requires-Dist: flask>=3.1.2
+Requires-Dist: gunicorn>=23.0.0
+Requires-Dist: psycopg2-binary>=2.9.11
+Requires-Dist: psycopg[binary]>=3.2.12
+Requires-Dist: python-dotenv>=1.2.1
+Requires-Dist: requests>=2.32.5
+Requires-Dist: validators>=0.35.0
+
 # Page Analyzer
 
 [![Actions Status](https://github.com/EggsellentGuy/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/EggsellentGuy/python-project-83/actions)
