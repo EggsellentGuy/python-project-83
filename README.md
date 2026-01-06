@@ -1,7 +1,7 @@
 # Page Analyzer
 
 [![Actions Status](https://github.com/EggsellentGuy/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/EggsellentGuy/python-project-83/actions)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=EggsellentGuy_python-project-83&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=EggsellentGuy_python-project-83)
+[![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-dark.svg)](https://sonarcloud.io/summary/new_code?id=EggsellentGuy_python-project-83)
 
 
 **Page Analyzer** — веб-приложение на Flask для анализа веб-страниц на SEO-пригодность.  
