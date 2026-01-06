@@ -30,9 +30,10 @@ jobs:
           pip install uv
           make install
 
-      - name: Run checks
+      - name: Run lint and tests
         run: |
-          make check
+          make lint
+          make test
 
       - name: Run test coverage (coverage.xml)
         run: |
