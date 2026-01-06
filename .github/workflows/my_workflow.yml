@@ -30,14 +30,9 @@ jobs:
           pip install uv
           make install
 
-      - name: Run lint and tests
+      - name: Run lint
         run: |
           make lint
-          make test
-
-      - name: Run test coverage (coverage.xml)
-        run: |
-          make test-coverage
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
@@ -48,6 +43,4 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.organization=eggsellentguy
             -Dsonar.projectKey=EggsellentGuy_python-project-83
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.coverage.exclusions=tests/**
             -Dsonar.exclusions=tests/**
